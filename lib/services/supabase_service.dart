@@ -1,114 +1,96 @@
-// lib/services/supabase_service.dart
-
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../main.dart'; // Untuk akses `supabase` client
 
 class SupabaseService {
-  // Upload Gambar (Bekerja untuk Web dan Mobile)
+  final SupabaseClient supabase = Supabase.instance.client;
+
+  // ------------------------ Upload Gambar ------------------------
+
   Future<String> uploadImage(
     File file,
-    String bucketName,
     String fileName,
+    String bucketName,
   ) async {
     final bytes = await file.readAsBytes();
-    await supabase.storage
-        .from(bucketName)
-        .uploadBinary(
-          fileName,
-          bytes,
-          fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
-        );
-    // Mendapatkan URL publik dari gambar yang diupload
-    final String publicUrl = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(fileName);
-    return publicUrl;
+    await supabase.storage.from(bucketName).uploadBinary(
+      fileName,
+      bytes,
+      fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+    );
+    return supabase.storage.from(bucketName).getPublicUrl(fileName);
   }
 
-  // Versi lain untuk web menggunakan XFile
   Future<String> uploadImageBytes(
     Uint8List bytes,
-    String bucketName,
     String fileName,
+    String bucketName,
   ) async {
-    await supabase.storage
-        .from(bucketName)
-        .uploadBinary(
-          fileName,
-          bytes,
-          fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
-        );
-    final String publicUrl = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(fileName);
-    return publicUrl;
+    await supabase.storage.from(bucketName).uploadBinary(
+      fileName,
+      bytes,
+      fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+    );
+    return supabase.storage.from(bucketName).getPublicUrl(fileName);
   }
 
-  // --- CRUD Catatan ---
-
-  Future<List<Map<String, dynamic>>> getNotes() async {
-    final userId = supabase.auth.currentUser!.id;
-    final data = await supabase
-        .from('notes')
-        .select()
-        .eq('user_id', userId)
-        .order('created_at', ascending: false);
-    return data;
-  }
-
-  Future<void> addNote({
-    required String title,
-    required String content,
-    String? imageUrl,
-  }) async {
-    final userId = supabase.auth.currentUser!.id;
-    await supabase.from('notes').insert({
-      'user_id': userId,
-      'title': title,
-      'content': content,
-      'image_url': imageUrl,
-    });
-  }
-
-  Future<void> updateNote({
-    required int id,
-    required String title,
-    required String content,
-    String? imageUrl,
-  }) async {
-    final updates = {'title': title, 'content': content, 'image_url': imageUrl};
-    await supabase.from('notes').update(updates).eq('id', id);
-  }
-
-  Future<void> deleteNote(int id) async {
-    await supabase.from('notes').delete().eq('id', id);
-  }
-
-  // --- Profil Pengguna ---
+  // ------------------------ Profiles ------------------------
 
   Future<Map<String, dynamic>?> getProfile() async {
-    final userId = supabase.auth.currentUser!.id;
-    final data = await supabase
-        .from('profiles')
-        .select()
-        .eq('id', userId)
-        .single();
-    return data;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return null;
+
+    return await supabase.from('profiles').select().eq('id', userId).single();
   }
 
   Future<void> updateProfile({
     required String username,
     String? avatarUrl,
+    String? title,
+    String? noTelp,
+    String? emailPesan,
   }) async {
-    final userId = supabase.auth.currentUser!.id;
-    final updates = {
-      'id': userId,
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await supabase.from('profiles').update({
       'username': username,
-      'avatar_url': avatarUrl,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
+      if (title != null) 'title': title,
+      if (noTelp != null) 'no_telp': noTelp,
+      if (emailPesan != null) 'email_pesan': emailPesan,
       'updated_at': DateTime.now().toIso8601String(),
-    };
-    await supabase.from('profiles').upsert(updates);
+    }).eq('id', userId);
+  }
+
+  // ------------------------ Generic CRUD ------------------------
+
+  Future<List<Map<String, dynamic>>> getAll(String table) async {
+    final data = await supabase
+        .from(table)
+        .select()
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<void> insertRow(String table, Map<String, dynamic> data) async {
+    await supabase.from(table).insert(data);
+  }
+
+  Future<void> updateRow(
+      String table, Map<String, dynamic> data, String id) async {
+    await supabase.from(table).update(data).eq('id', id);
+  }
+
+  Future<void> deleteRow(String table, String idField, String id) async {
+    await supabase.from(table).delete().eq(idField, id);
+  }
+
+  Future<void> insert(String table, Map<String, dynamic> data) async {
+    await supabase.from(table).insert(data);
+  }
+
+  Future<void> delete(String table, String id) async {
+    await supabase.from(table).delete().match({'id': id});
   }
 }

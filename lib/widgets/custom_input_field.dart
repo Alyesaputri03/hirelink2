@@ -1,5 +1,3 @@
-// lib/widgets/custom_input_field.dart
-
 import 'package:flutter/material.dart';
 
 class CustomInputField extends StatelessWidget {
@@ -9,6 +7,7 @@ class CustomInputField extends StatelessWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final int? maxLines;
+  final Color? fillColor; // ✅ Tambahkan ini
 
   const CustomInputField({
     super.key,
@@ -18,6 +17,7 @@ class CustomInputField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.maxLines = 1,
+    this.fillColor, // ✅ Tambahkan ini juga
   });
 
   @override
@@ -32,7 +32,7 @@ class CustomInputField extends StatelessWidget {
         labelText: labelText,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: fillColor ?? Colors.grey[100], // ✅ Gunakan warna jika disediakan
       ),
     );
   }

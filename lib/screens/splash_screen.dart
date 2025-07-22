@@ -16,22 +16,19 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Tunggu frame pertama selesai render sebelum navigasi
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _redirect();
     });
   }
 
   Future<void> _redirect() async {
-    // Tunggu sedikit untuk menampilkan splash screen
     await Future.delayed(const Duration(seconds: 1));
 
-    // `mounted` check
     if (!mounted) return;
 
     final session = supabase.auth.currentSession;
     if (session != null) {
-      Get.offAllNamed(AppRoutes.profile);
+      Get.offAllNamed(AppRoutes.home);
     } else {
       Get.offAllNamed(AppRoutes.login);
     }
@@ -39,14 +36,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
+      backgroundColor: Colors.blue,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text('Memuat...'),
+            Image.network(
+              'https://itrpmenjinbmvokaifqi.supabase.co/storage/v1/object/public/avatars/fb0a9485-06e9-488d-b953-6613c69d093d/1752852830592.jpg',
+              width: 210,
+              height: 90,
+              fit: BoxFit.cover,
+            ),
+            const SizedBox(height: 20),
+            const CircularProgressIndicator(color: Colors.white),
+            const SizedBox(height: 12),
+            const Text(
+              'Memuat...',
+              style: TextStyle(color: Colors.white),
+            ),
           ],
         ),
       ),

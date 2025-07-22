@@ -1,13 +1,5 @@
-// lib/screens/auth/login_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../../main.dart';
-// import '../../main.dart';
-import '../../utils/app_routes.dart';
-import '../../widgets/custom_input_field.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,109 +11,171 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
+  bool _rememberMe = false;
 
-  Future<void> _signIn() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-      try {
-        await supabase.auth.signInWithPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-        if (mounted) {
-          Get.offAllNamed(AppRoutes.profile);
-        }
-      } on AuthException catch (e) {
-        Get.snackbar(
-          'Error',
-          e.message,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      } catch (e) {
-        Get.snackbar(
-          'Error',
-          'Terjadi kesalahan tidak terduga',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      }
+  final supabase = Supabase.instance.client;
+
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email dan password wajib diisi')),
+      );
+      return;
     }
-  }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+    try {
+      // Cek admin terlebih dahulu
+      if (email == 'admin@gmail.com' && password == 'admin123') {
+        Navigator.pushReplacementNamed(context, '/pengguna');
+        return;
+      }
+
+      final response = await supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      final userId = response.user?.id;
+      if (userId != null) {
+        final profile = await supabase
+            .from('profiles')
+            .select()
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (!mounted) return;
+
+        if (profile == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Data profil tidak ditemukan')),
+          );
+          return;
+        }
+
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      } else {
+        throw 'Login gagal: user tidak ditemukan.';
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      backgroundColor: const Color.fromARGB(255, 53, 133, 252),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.lock, size: 80, color: Colors.teal),
-                const SizedBox(height: 20),
-                CustomInputField(
-                  controller: _emailController,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 60),
+              const Text(
+                'Sign in to your Account',
+                style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              RichText(
+                text: const TextSpan(
+                  text: 'Hire',
+                  style: TextStyle(
+                      color: Color.fromARGB(255, 0, 47, 255),
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold),
+                  children: [
+                    TextSpan(
+                      text: 'Link',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
                   labelText: 'Email',
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || !GetUtils.isEmail(value)) {
-                      return 'Masukkan email yang valid';
-                    }
-                    return null;
-                  },
+                  labelStyle: const TextStyle(color: Colors.black),
+                  fillColor: Colors.white,
+                  filled: true,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
-                const SizedBox(height: 16),
-                CustomInputField(
-                  controller: _passwordController,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
                   labelText: 'Password',
-                  obscureText: true,
-                  validator: (value) {
-                    if (value == null || value.length < 6) {
-                      return 'Password minimal 6 karakter';
-                    }
-                    return null;
-                  },
+                  labelStyle: const TextStyle(color: Colors.black),
+                  fillColor: Colors.white,
+                  filled: true,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
-                const SizedBox(height: 24),
-                _isLoading
-                    ? const CircularProgressIndicator()
-                    : SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _signIn,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: const Text('Login'),
-                        ),
-                      ),
-                TextButton(
-                  onPressed: () => Get.toNamed(AppRoutes.register),
-                  child: const Text('Belum punya akun? Daftar di sini'),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 0, 0, 0),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text(
+  'Log in',
+  style: TextStyle(color: Colors.white), // Ubah warna teks tombol menjadi putih
+),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              const Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.white)),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      "OR",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Colors.white)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Don't have an account? ",
+                      style: TextStyle(color: Colors.white)),
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/register'),
+                    child: const Text(
+                      'Sign Up',
+                      style: TextStyle(
+                          color: Color.fromARGB(255, 3, 62, 255), fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              )
+            ],
           ),
         ),
       ),
