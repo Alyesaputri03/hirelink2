@@ -1,4 +1,4 @@
-name: flutter_supabase_notes_app
+name: flutter_supabase_notes_appHire
 description: "A new Flutter project."
 publish_to: 'none'
 version: 1.0.0+1
@@ -15,7 +15,7 @@ dependencies:
   get_storage: ^2.1.1
   path_provider: ^2.1.5
   image_picker: ^1.1.2
-  file_picker: ^6.1.1   # ✅ valid dan kompatibel
+  file_picker: ^10.2.0  # ✅ valid dan kompatibel
   dotted_border: ^2.0.0+3
   intl: ^0.18.1
 
